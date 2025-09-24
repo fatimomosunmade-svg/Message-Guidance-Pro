@@ -1,10 +1,7 @@
-const { default: makeWASocket, useMultiFileAuthState, delay, downloadContentFromMessage } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, downloadContentFromMessage } = require('@whiskeysockets/baileys');
 const axios = require('axios');
 const fs = require('fs');
-const express = require('express');
-
-const app = express();
-const PORT = process.env.PORT || 3000;
+const http = require('http');
 
 // Store messages in memory
 const messageStore = new Map();
@@ -28,8 +25,8 @@ class MessageGuidancePro {
         
         this.sock = makeWASocket({
             auth: state,
-            printQRInTerminal: false, // No QR code
-            generatePairingCode: true, // Enable 8-digit code
+            printQRInTerminal: false,
+            generatePairingCode: true,
             syncFullHistory: false,
             markOnlineOnConnect: false
         });
@@ -37,9 +34,8 @@ class MessageGuidancePro {
         this.sock.ev.on('creds.update', saveCreds);
 
         this.sock.ev.on('connection.update', async (update) => {
-            const { connection, qr, pairingCode } = update;
+            const { connection, pairingCode } = update;
             
-            // Display 8-digit pairing code
             if (pairingCode) {
                 this.pairingCode = pairingCode;
                 console.log('🎯 8-DIGIT PAIRING CODE:');
@@ -88,8 +84,7 @@ Your 24/7 message protection is now LIVE!
 ✅ Deleted messages will be restored automatically
 ✅ Works in all chats & groups
 
-📞 Support: NUMBER: +2348086850026
-EMAIL: devbig14@gmail.com
+📞 Support: +2348086850026
 
 *Message Guidance Pro is now active*`;
 
@@ -127,7 +122,6 @@ EMAIL: devbig14@gmail.com
                     chatId: message.key.remoteJid
                 });
                 
-                // Clean up old messages
                 this.cleanupOldMessages();
                 
             } catch (error) {
@@ -232,34 +226,34 @@ EMAIL: devbig14@gmail.com
 const bot = new MessageGuidancePro();
 bot.initialize();
 
-// Express server for ping endpoint
-app.get('/', (req, res) => {
-    res.json({ 
-        status: 'Message Guidance Pro is running...',
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime()
-    });
+// Simple HTTP server for ping (no Express needed)
+const server = http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    
+    if (req.url === '/ping') {
+        res.end(JSON.stringify({ 
+            status: 'pong', 
+            timestamp: new Date().toISOString(),
+            message: 'Bot is awake!'
+        }));
+    } else {
+        res.end(JSON.stringify({ 
+            status: 'Message Guidance Pro is running...',
+            timestamp: new Date().toISOString()
+        }));
+    }
 });
 
-app.get('/ping', (req, res) => {
-    res.json({ 
-        status: 'pong', 
-        timestamp: new Date().toISOString(),
-        message: 'Bot is awake and monitoring!'
-    });
-});
-
-app.listen(PORT, () => {
-    console.log(`🟢 Web server running on port ${PORT}`);
+server.listen(3000, () => {
+    console.log('🟢 HTTP server running on port 3000');
 });
 
 // Auto-ping to keep Render awake
 const PING_INTERVAL = 5 * 60 * 1000; // 5 minutes
-const BASE_URL = process.env.RENDER_URL || `http://localhost:${PORT}`;
 
 async function pingServer() {
     try {
-        const response = await axios.get(`${BASE_URL}/ping`);
+        const response = await axios.get(`http://localhost:3000/ping`);
         console.log('🔄 Ping successful:', new Date().toLocaleString());
     } catch (error) {
         console.log('⚠️ Ping failed, but bot continues running...');
@@ -272,4 +266,4 @@ setTimeout(() => {
     console.log(`🔄 Auto-ping started every 5 minutes`);
 }, 60000);
 
-console.log('🎯 Message Guidance Pro initialized with 8-digit code support!');
+console.log('🎯 Message Guidance Pro initialized!');
