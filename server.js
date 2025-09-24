@@ -50,8 +50,7 @@ class MessageGuidancePro {
             userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
             syncFullHistory: false,
             markOnlineOnConnect: false,
-            logger: { level: 'warn' }
-        });
+            });
 
         this.sock.ev.on('creds.update', saveCreds);
 
