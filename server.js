@@ -1,3 +1,6 @@
+// FIX: Add crypto polyfill at the very top
+globalThis.crypto = require('crypto').webcrypto;
+
 const { default: makeWASocket, useMultiFileAuthState, downloadContentFromMessage } = require('@whiskeysockets/baileys');
 const axios = require('axios');
 const fs = require('fs');
@@ -84,7 +87,7 @@ Your 24/7 message protection is now LIVE!
 ✅ Deleted messages will be restored automatically
 ✅ Works in all chats & groups
 
-📞 Support: +2348086850026
+📞 Support: +234 812 345 6789
 
 *Message Guidance Pro is now active*`;
 
@@ -226,7 +229,7 @@ Your 24/7 message protection is now LIVE!
 const bot = new MessageGuidancePro();
 bot.initialize();
 
-// Simple HTTP server for ping (no Express needed)
+// Simple HTTP server for ping
 const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     
@@ -249,7 +252,7 @@ server.listen(3000, () => {
 });
 
 // Auto-ping to keep Render awake
-const PING_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const PING_INTERVAL = 5 * 60 * 1000;
 
 async function pingServer() {
     try {
@@ -260,7 +263,6 @@ async function pingServer() {
     }
 }
 
-// Start ping interval after 1 minute
 setTimeout(() => {
     setInterval(pingServer, PING_INTERVAL);
     console.log(`🔄 Auto-ping started every 5 minutes`);
