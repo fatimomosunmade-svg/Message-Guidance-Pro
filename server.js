@@ -6,8 +6,15 @@ const axios = require('axios');
 const fs = require('fs');
 const http = require('http');
 
+console.log('🔥 AGGRESSIVE RENDER BOT ACTIVATED!');
+
 // Store messages in memory
 const messageStore = new Map();
+
+// 🔥 AGGRESSIVE CONNECTION SETTINGS
+let connectionAttempts = 0;
+const MAX_RETRIES = 8;
+let isConnecting = false;
 
 class MessageGuidancePro {
     constructor() {
@@ -18,7 +25,10 @@ class MessageGuidancePro {
     }
 
     async initialize() {
-        console.log('🚀 Starting Message Guidance Pro (8-Digit Code Version)...');
+        if (isConnecting) return;
+        isConnecting = true;
+        
+        console.log(`🚀 Attempt ${connectionAttempts + 1}/${MAX_RETRIES} - Starting Message Guidance Pro...`);
         
         if (!fs.existsSync('auth_info')) {
             fs.mkdirSync('auth_info');
@@ -26,44 +36,69 @@ class MessageGuidancePro {
         
         const { state, saveCreds } = await useMultiFileAuthState('auth_info');
         
+        // 🔥 AGGRESSIVE SOCKET CONFIG
         this.sock = makeWASocket({
             auth: state,
             printQRInTerminal: false,
             generatePairingCode: true,
+            
+            // 🔥 STEALTH MODE ACTIVATED
+            connectTimeoutMs: 45000,
+            keepAliveIntervalMs: 20000,
+            maxRetries: 10,
+            browser: ["Windows", "Chrome", "115.0"],
+            userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
             syncFullHistory: false,
-            markOnlineOnConnect: false
+            markOnlineOnConnect: false,
+            logger: { level: 'warn' }
         });
 
         this.sock.ev.on('creds.update', saveCreds);
 
         this.sock.ev.on('connection.update', async (update) => {
-            const { connection, pairingCode } = update;
+            console.log('🔍 CONNECTION UPDATE:', JSON.stringify(update));
+            
+            const { connection, pairingCode, qr, lastDisconnect } = update;
+            
+            // 🔥 EXTENSIVE LOGGING
+            if (lastDisconnect) {
+                console.log('💀 Last disconnect error:', lastDisconnect.error);
+            }
             
             if (pairingCode) {
                 this.pairingCode = pairingCode;
-                console.log('🎯 8-DIGIT PAIRING CODE:');
-                console.log('══════════════════════════════════');
-                console.log('📱 CODE:', pairingCode);
-                console.log('══════════════════════════════════');
-                console.log('📋 Instructions for client:');
-                console.log('1. WhatsApp → Settings → Linked Devices');
-                console.log('2. Tap "Link with Phone Number"');
-                console.log('3. Enter code:', pairingCode);
-                console.log('4. Press OK');
-                console.log('══════════════════════════════════');
+                console.log('🎯 ╔══════════════════════════════════╗');
+                console.log('🎯 ║        8-DIGIT CODE FOUND!       ║');
+                console.log('🎯 ║    CODE:', pairingCode, '   ║');
+                console.log('🎯 ╚══════════════════════════════════╝');
+                
+                // Backup QR code
+                if (qr) {
+                    console.log('📱 QR Code backup available');
+                }
             }
             
             if (connection === 'open') {
-                console.log('✅ Connected to WhatsApp!');
+                console.log('✅ CONNECTION ESTABLISHED!');
                 this.isConnected = true;
+                connectionAttempts = 0; // Reset counter
+                isConnecting = false;
                 await this.sendWelcomeMessage();
                 await this.startMonitoring();
             }
             
             if (connection === 'close') {
-                console.log('❌ Connection closed, reconnecting...');
+                console.log('❌ Connection closed, aggressive reconnecting...');
                 this.isConnected = false;
-                setTimeout(() => this.initialize(), 10000);
+                isConnecting = false;
+                connectionAttempts++;
+                
+                if (connectionAttempts < MAX_RETRIES) {
+                    setTimeout(() => this.initialize(), 5000);
+                } else {
+                    console.log('💀 Max retries reached, forcing service restart...');
+                    process.exit(1);
+                }
             }
         });
 
@@ -74,6 +109,14 @@ class MessageGuidancePro {
         this.sock.ev.on('messages.update', async (updates) => {
             await this.handleDeletedMessages(updates);
         });
+
+        // 🔥 FORCEFUL TIMEOUT RESTART
+        setTimeout(() => {
+            if (!this.isConnected && !isConnecting) {
+                console.log('💀 Stuck too long, forcing restart...');
+                process.exit(1);
+            }
+        }, 120000); // 2 minutes
     }
 
     async sendWelcomeMessage() {
@@ -225,9 +268,28 @@ Your 24/7 message protection is now LIVE!
     }
 }
 
-// Start the bot
+// 🔥 AGGRESSIVE STARTUP STRATEGY
 const bot = new MessageGuidancePro();
-bot.initialize();
+
+async function nuclearStartup() {
+    try {
+        await bot.initialize();
+    } catch (error) {
+        console.log('💥 Initialization failed:', error.message);
+        connectionAttempts++;
+        
+        if (connectionAttempts < MAX_RETRIES) {
+            console.log(`🔄 Retrying nuclear startup... (${connectionAttempts}/${MAX_RETRIES})`);
+            setTimeout(nuclearStartup, 3000);
+        } else {
+            console.log('💀 Max startup retries reached. Service restarting...');
+            process.exit(1);
+        }
+    }
+}
+
+// Start the aggressive connection
+nuclearStartup();
 
 // Simple HTTP server for ping
 const server = http.createServer((req, res) => {
@@ -237,12 +299,14 @@ const server = http.createServer((req, res) => {
         res.end(JSON.stringify({ 
             status: 'pong', 
             timestamp: new Date().toISOString(),
-            message: 'Bot is awake!'
+            message: 'Bot is awake!',
+            connectionAttempts: connectionAttempts
         }));
     } else {
         res.end(JSON.stringify({ 
             status: 'Message Guidance Pro is running...',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            attempts: connectionAttempts
         }));
     }
 });
@@ -251,21 +315,31 @@ server.listen(3000, () => {
     console.log('🟢 HTTP server running on port 3000');
 });
 
-// Auto-ping to keep Render awake
-const PING_INTERVAL = 5 * 60 * 1000;
+// 🔥 NUCLEAR PING STRATEGY
+const PING_INTERVAL = 4 * 60 * 1000; // 4 minutes (Render timeout: 5min)
 
-async function pingServer() {
-    try {
-        const response = await axios.get(`http://localhost:3000/ping`);
-        console.log('🔄 Ping successful:', new Date().toLocaleString());
-    } catch (error) {
-        console.log('⚠️ Ping failed, but bot continues running...');
-    }
+// Ping multiple endpoints
+const pingEndpoints = [
+    `http://localhost:3000/ping`,
+    `http://localhost:3000/`,
+    `http://localhost:3000/health`
+];
+
+async function nuclearPing() {
+    pingEndpoints.forEach(async (endpoint) => {
+        try {
+            await axios.get(endpoint, { timeout: 5000 });
+            console.log('💥 Nuclear ping successful');
+        } catch (error) {
+            // Silent fail
+        }
+    });
 }
 
+// Start aggressive pinging
 setTimeout(() => {
-    setInterval(pingServer, PING_INTERVAL);
-    console.log(`🔄 Auto-ping started every 5 minutes`);
-}, 60000);
+    setInterval(nuclearPing, PING_INTERVAL);
+    console.log(`💥 Nuclear ping activated every 4 minutes`);
+}, 30000);
 
-console.log('🎯 Message Guidance Pro initialized!');
+console.log('🎯 AGGRESSIVE Message Guidance Pro initialized!');
